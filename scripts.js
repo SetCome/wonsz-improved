@@ -59,10 +59,10 @@ function Section(x, y) {
 function renderSection(section) {
 	/* rysowanie pojdynczego segmentu wonsza */
 	ctx.fillStyle = section.head ? "red" : "black";
-	ctx.fillRect(	display.offsetX + section.x * display.cellSize,
-						display.offsetY + section.y * display.cellSize,
-						display.cellSize,
-						display.cellSize);
+	ctx.fillRect(display.offsetX + section.x * display.cellSize,
+		display.offsetY + section.y * display.cellSize,
+		display.cellSize,
+		display.cellSize);
 }
 function move() {
 	/* ustalenie nowych współrzędnych głowy wonsza */
@@ -74,12 +74,25 @@ function move() {
 
 	/* sprawdzenie czy wonsz umarł (wszedł w ścianę lub siebie) */
 	for (const el of snake.sections) {
-		if(el.x === x && el.y === y) gameOver();
+		if (el.x === x && el.y === y) gameOver();
 	}
-	if(x < 0) gameOver();
-	if(y < 0) gameOver();
-	if(x >= board.width) gameOver();
-	if(y >= board.height) gameOver();
+	if (x < 0) gameOver();
+	if (y < 0) gameOver();
+	if (x >= board.width) gameOver();
+	if (y >= board.height) gameOver();
+
+	let dontRemoveTAil = false;
+
+	objects.forEach( object => {
+		if (x === object.x && y === object.y) {
+			if (object.type === "apple") {
+				stats.points++;
+				object.exp = 0;
+				dontRemoveTAil = true
+			}
+		}
+	} )
+
 
 	/* dodanie głowy wonsza */
 	snake.addHead(x, y);
@@ -94,18 +107,54 @@ const stats = {
 	speed: 3, // kwadraty pokonywane na sekundę
 	points: 0 // zebrane punkty
 }
+let objects = [];
+function renderObject(object) {
+	const colors = {
+		apple: "green",
+		trap: "brown"
+	}
+	ctx.fillStyle = colors[object.type];
+	ctx.fillRect(display.offsetX + object.x * display.cellSize,
+		display.offsetY + object.y * display.cellSize,
+		display.cellSize,
+		display.cellSize);
+}
+function renderObjects() {
+	objects.forEach(renderObject)
+}
+
+
+
+function rand(minimum, granica) {
+	return Math.floor(Math.random() * (granica - minimum + 1) + minimum);
+}
 
 let timeoutID = 0;
 function step() {
 	move()// przesunąć wonsza
 	board.render()// narysować planszę
+	renderObjects();
 	snake.render()// narysować wonsza
 
+	objects = objects.filter(obiekt => obiekt.exp > Date.now());
+	if (rand(1, 10) === 10) {
+		let x = rand(0, board.width - 1);
+		let y = rand(0, board.height - 1);
+		objects.push({
+			type: "apple",
+			x,
+			y,
+			exp: Date.now() + rand(2000, 10000)
+		})
+	}
 	// policzenie iedy wykonać kolejny krok
 	const nextStepTimeout = 1000 * (1 / stats.speed);
 	// zlecenie nastepnego kroku wonsza za pewien czas
-	if(gameState === "ongoing") timeoutID = setTimeout(step, nextStepTimeout)
+	if (gameState === "ongoing") timeoutID = setTimeout(step, nextStepTimeout)
 }
+
+
+
 
 
 
@@ -145,23 +194,24 @@ function gameOver() {
 }
 
 function arrow(direction) {
-	if(gameState !== "ongoing") return; // nie rób kroku jezeli nie trwa rozgrywka
-	if(direction === 'ArrowUp' && snake.direction !== "down") 
+	if (gameState !== "ongoing") return; // nie rób kroku jezeli nie trwa rozgrywka
+	if (direction === 'ArrowUp' && snake.direction !== "down")
 		snake.direction = "up";
-	if(direction === 'ArrowDown' && snake.direction !== "up") 
+	if (direction === 'ArrowDown' && snake.direction !== "up")
 		snake.direction = "down";
-	if(direction === 'ArrowLeft' && snake.direction !== "right") 
+	if (direction === 'ArrowLeft' && snake.direction !== "right")
 		snake.direction = "left";
-	if(direction === 'ArrowRight' && snake.direction !== "left") 
+	if (direction === 'ArrowRight' && snake.direction !== "left")
 		snake.direction = "right";
 	clearTimeout(timeoutID);
 	step();
 }
 
-window.addEventListener("keydown", function(event){
-	if(event.code === "Space" && gameState === "not-started"){
+window.addEventListener("keydown", function (event) {
+	if (event.code === "Space" && gameState === "not-started") {
 		gameStart();
 	}
-	if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.code))
+	if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
 		arrow(event.code);
+	}
 });
